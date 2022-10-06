@@ -1,21 +1,4 @@
-if Config.CheckForUpdates then
-    Citizen.CreateThread(function()
-        updatePath = "/TayMcKenzieNZ/dpemotes"
-        resourceName = "dp Emotes (" .. GetCurrentResourceName() .. ")"
-        PerformHttpRequest("https://raw.githubusercontent.com" .. updatePath .. "/master/version", checkVersion, "GET")
-    end)
-end
-
-RegisterServerEvent("dp:CheckVersion")
-AddEventHandler("dp:CheckVersion", function()
-    if updateavail then
-        TriggerClientEvent("dp:Update", source, true)
-    else
-        TriggerClientEvent("dp:Update", source, false)
-    end
-end)
-
-function checkVersion(err, responseText, headers)
+local function checkVersion(_, responseText,_)
     curVersion = LoadResourceFile(GetCurrentResourceName(), "version")
 
     if curVersion ~= responseText and tonumber(curVersion) < tonumber(responseText) then
@@ -30,4 +13,13 @@ function checkVersion(err, responseText, headers)
     else
         print("\n" .. resourceName .. " is up to date. (^2" .. curVersion .. "^7)")
     end
+end
+
+
+if Config.CheckForUpdates then
+    CreateThread(function()
+        updatePath = "/TayMcKenzieNZ/dpemotes"
+        resourceName = "dp Emotes (" .. GetCurrentResourceName() .. ")"
+        PerformHttpRequest("https://raw.githubusercontent.com" .. updatePath .. "/master/version", checkVersion, "GET")
+    end)
 end

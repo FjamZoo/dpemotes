@@ -7,11 +7,11 @@ end
 function RequestWalking(set)
     RequestAnimSet(set)
     while not HasAnimSetLoaded(set) do
-        Citizen.Wait(1)
+        Wait(1)
     end
 end
 
-function WalksOnCommand(source, args, raw)
+function WalksOnCommand()
     local WalksCommand = ""
     for a in pairsByKeys(DP.Walks) do
         WalksCommand = WalksCommand .. "" .. string.lower(a) .. ", "
@@ -20,7 +20,7 @@ function WalksOnCommand(source, args, raw)
     EmoteChatMessage("To reset do /walk reset")
 end
 
-function WalkCommandStart(source, args, raw)
+function WalkCommandStart(_, args)
     local name = firstToUpper(string.lower(args[1]))
 
     if name == "Reset" then

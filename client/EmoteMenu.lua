@@ -1,5 +1,3 @@
-TriggerServerEvent("dp:CheckVersion")
-
 rightPosition = { x = 1450, y = 100 }
 leftPosition = { x = 0, y = 100 }
 menuPosition = { x = 0, y = 200 }
@@ -17,7 +15,7 @@ if Config.CustomMenuEnabled then
     local Object = CreateDui(Config.MenuImage, 512, 128)
     _G.Object = Object
     local TextureThing = GetDuiHandle(Object)
-    local Texture = CreateRuntimeTextureFromDuiHandle(RuntimeTXD, 'Custom_Menu_Head', TextureThing)
+    CreateRuntimeTextureFromDuiHandle(RuntimeTXD, 'Custom_Menu_Head', TextureThing)
     Menuthing = "Custom_Menu_Head"
 else
     Menuthing = "shopui_title_sm_hangar"
@@ -39,7 +37,6 @@ end
 
 local EmoteTable = {}
 local FavEmoteTable = {}
-local KeyEmoteTable = {}
 local DanceTable = {}
 local AnimalTable = {}
 local PropETable = {}
@@ -49,12 +46,8 @@ local ShareTable = {}
 local FavoriteEmote = ""
 
 if Config.FavKeybindEnabled then
-    RegisterCommand('emotefav', function(source, args, raw) FavKeybind() end)
-
-    RegisterKeyMapping("emotefav", "Execute your favorite emote", "keyboard", Config.FavKeybind)
-
     local doingFavoriteEmote = false
-    function FavKeybind()
+    local function FavKeybind()
         if doingFavoriteEmote then return end
         doingFavoriteEmote = true
         if not IsPedSittingInAnyVehicle(PlayerPedId()) then
@@ -65,6 +58,9 @@ if Config.FavKeybindEnabled then
         end
         doingFavoriteEmote = false
     end
+
+    RegisterCommand('emotefav', function() FavKeybind() end)
+    RegisterKeyMapping("emotefav", "Execute your favorite emote", "keyboard", Config.FavKeybind)
 end
 
 lang = Config.MenuLanguage
@@ -189,16 +185,16 @@ function AddEmoteMenu(menu)
     end
     favEmotes = nil
 
-    dancemenu.OnItemSelect = function(sender, item, index)
+    dancemenu.OnItemSelect = function(_, _, index)
         EmoteMenuStart(DanceTable[index], "dances")
     end
 
-    animalmenu.OnItemSelect = function(sender, item, index)
+    animalmenu.OnItemSelect = function(_, _, index)
         EmoteMenuStart(AnimalTable[index], "animals")
     end
 
     if Config.SharedEmotesEnabled then
-        sharemenu.OnItemSelect = function(sender, item, index)
+        sharemenu.OnItemSelect = function(_, _, index)
             if ShareTable[index] ~= 'none' then
                 target, distance = GetClosestPlayer()
                 if (distance ~= -1 and distance < 3) then
@@ -211,7 +207,7 @@ function AddEmoteMenu(menu)
             end
         end
 
-        shareddancemenu.OnItemSelect = function(sender, item, index)
+        shareddancemenu.OnItemSelect = function(_, _, index)
             target, distance = GetClosestPlayer()
             if (distance ~= -1 and distance < 3) then
                 _, _, rename = table.unpack(DP.Dances[DanceTable[index]])
@@ -223,11 +219,11 @@ function AddEmoteMenu(menu)
         end
     end
 
-    propmenu.OnItemSelect = function(sender, item, index)
+    propmenu.OnItemSelect = function(_, _, index)
         EmoteMenuStart(PropETable[index], "props")
     end
 
-    submenu.OnItemSelect = function(sender, item, index)
+    submenu.OnItemSelect = function(_, _, index)
         if EmoteTable[index] ~= Config.Languages[lang]['favoriteemotes'] then
             EmoteMenuStart(EmoteTable[index], "emotes")
         end
@@ -237,7 +233,7 @@ end
 function AddCancelEmote(menu)
     local newitem = NativeUI.CreateItem(Config.Languages[lang]['cancelemote'], Config.Languages[lang]['cancelemoteinfo'])
     menu:AddItem(newitem)
-    menu.OnItemSelect = function(sender, item, checked_)
+    menu.OnItemSelect = function(_, item)
         if item == newitem then
             EmoteCancel()
             DestroyAllProps()
@@ -368,14 +364,6 @@ function ProcessMenu()
     isMenuProcessing = false
 end
 
-RegisterNetEvent("dp:Update")
-AddEventHandler("dp:Update", function(state)
-    UpdateAvailable = state
-    AddInfoMenu(mainMenu)
-    _menuPool:RefreshIndex()
-end)
-
-RegisterNetEvent("dp:RecieveMenu") -- For opening the emote menu from another resource.
-AddEventHandler("dp:RecieveMenu", function()
+RegisterNetEvent("dp:RecieveMenu", function()
     OpenEmoteMenu()
 end)

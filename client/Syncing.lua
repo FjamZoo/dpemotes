@@ -1,6 +1,6 @@
 local isRequestAnim = false
 local requestedemote = ''
-local targetPlayerId = ''
+local targetPlayerId = nil
 
 -- Some of the work here was done by Super.Cool.Ninja / rubbertoe98
 -- https://forum.fivem.net/t/release-nanimstarget/876709
@@ -9,12 +9,12 @@ local targetPlayerId = ''
 -- Commands / Events --------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 if Config.SharedEmotesEnabled then
-    RegisterCommand('nearby', function(source, args, raw)
+    RegisterCommand('nearby', function(_, args)
         if #args > 0 then
             local emotename = string.lower(args[1])
             target, distance = GetClosestPlayer()
             if (distance ~= -1 and distance < 3) then
-                if DP.Shared[emotename] ~= nil then
+                if DP.Shared[emotename] then
                     dict, anim, ename = table.unpack(DP.Shared[emotename])
                     TriggerServerEvent("ServerEmoteRequest", GetPlayerServerId(target), emotename)
                     SimpleNotify(Config.Languages[lang]['sentrequestto'] ..
@@ -31,13 +31,12 @@ if Config.SharedEmotesEnabled then
     end, false)
 end
 
-RegisterNetEvent("SyncPlayEmote")
-AddEventHandler("SyncPlayEmote", function(emote, player)
+RegisterNetEvent("SyncPlayEmote", function(emote, player)
     EmoteCancel()
     Wait(300)
     targetPlayerId = player
-    -- wait a little to make sure animation shows up right on both clients after canceling any previous emote
-    if DP.Shared[emote] ~= nil then
+    -- wait a little to make sure animation shows up right on boh clients after canceling any previous emote
+    if DP.Shared[emote] then
         if DP.Shared[emote].AnimationOptions and DP.Shared[emote].AnimationOptions.Attachto then
             -- We do not want to attach the player if the target emote already is attached to player
             -- this would cause issue where both player would be attached to each other and fall under the map
@@ -59,16 +58,15 @@ AddEventHandler("SyncPlayEmote", function(emote, player)
             end
         end
 
-        if OnEmotePlay(DP.Shared[emote]) then end
+        OnEmotePlay(DP.Shared[emote])
         return
-    elseif DP.Dances[emote] ~= nil then
-        if OnEmotePlay(DP.Dances[emote]) then end
+    elseif DP.Dances[emote] then
+        OnEmotePlay(DP.Dances[emote])
         return
     end
 end)
 
-RegisterNetEvent("SyncPlayEmoteSource")
-AddEventHandler("SyncPlayEmoteSource", function(emote, player)
+RegisterNetEvent("SyncPlayEmoteSource", function(emote, player)
     -- Thx to Poggu for this part!
     local ply = PlayerPedId()
     local plyServerId = GetPlayerFromServerId(player)
@@ -106,32 +104,30 @@ AddEventHandler("SyncPlayEmoteSource", function(emote, player)
     EmoteCancel()
     Wait(300)
     targetPlayerId = player
-    if DP.Shared[emote] ~= nil then
-        if OnEmotePlay(DP.Shared[emote]) then end
+    if DP.Shared[emote] then
+        OnEmotePlay(DP.Shared[emote])
         return
-    elseif DP.Dances[emote] ~= nil then
-        if OnEmotePlay(DP.Dances[emote]) then end
+    elseif DP.Dances[emote] then
+        OnEmotePlay(DP.Dances[emote])
         return
     end
 end)
 
-RegisterNetEvent("SyncCancelEmote")
-AddEventHandler("SyncCancelEmote", function(player)
+RegisterNetEvent("SyncCancelEmote", function(player)
     if targetPlayerId and targetPlayerId == player then
         targetPlayerId = nil
         EmoteCancel()
     end
 end)
 
-function CancelSharedEmote(ply)
+function CancelSharedEmote()
     if targetPlayerId then
         TriggerServerEvent("ServerEmoteCancel", targetPlayerId)
         targetPlayerId = nil
     end
 end
 
-RegisterNetEvent("ClientEmoteRequestReceive")
-AddEventHandler("ClientEmoteRequestReceive", function(emotename, etype)
+RegisterNetEvent("ClientEmoteRequestReceive", function(emotename, etype)
     isRequestAnim = true
     requestedemote = emotename
 
@@ -145,15 +141,15 @@ AddEventHandler("ClientEmoteRequestReceive", function(emotename, etype)
     SimpleNotify(Config.Languages[lang]['doyouwanna'] .. remote .. "~w~)")
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(5)
+        Wait(5)
         if IsControlJustPressed(1, 246) and isRequestAnim then
             target, distance = GetClosestPlayer()
             if (distance ~= -1 and distance < 3) then
-                if DP.Shared[requestedemote] ~= nil then
+                if DP.Shared[requestedemote] then
                     _, _, _, otheremote = table.unpack(DP.Shared[requestedemote])
-                elseif DP.Dances[requestedemote] ~= nil then
+                elseif DP.Dances[requestedemote] then
                     _, _, _, otheremote = table.unpack(DP.Dances[requestedemote])
                 end
                 if otheremote == nil then otheremote = requestedemote end
@@ -193,7 +189,7 @@ function GetPedInFront()
     return ped2
 end
 
-function NearbysOnCommand(source, args, raw)
+function NearbysOnCommand()
     local NearbysCommand = ""
     for a in pairsByKeys(DP.Shared) do
         NearbysCommand = NearbysCommand .. "" .. a .. ", "
@@ -219,7 +215,7 @@ function GetClosestPlayer()
     local ply = PlayerPedId()
     local plyCoords = GetEntityCoords(ply, 0)
 
-    for index, value in ipairs(players) do
+    for _, value in ipairs(players) do
         local target = GetPlayerPed(value)
         if (target ~= ply) then
             local targetCoords = GetEntityCoords(GetPlayerPed(value), 0)

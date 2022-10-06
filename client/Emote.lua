@@ -3,8 +3,6 @@ local AnimationDuration = -1
 local ChosenAnimation = ""
 local ChosenDict = ""
 local IsInAnimation = false
-local MostRecentChosenAnimation = ""
-local MostRecentChosenDict = ""
 local MovementType = 0
 local PlayerGender = "male"
 local PlayerHasProp = false
@@ -19,13 +17,20 @@ local PtfxCanHold = false
 local PtfxNoProp = false
 local AnimationThreadStatus = false
 
+local function PtfxStart()
+    LocalPlayer.state:set('ptfx', true, true)
+end
+
+local function PtfxStop()
+    LocalPlayer.state:set('ptfx', false, true)
+end
+
 local function RunAnimationThread()
     if AnimationThreadStatus then return end
     AnimationThreadStatus = true
     CreateThread(function()
-        local sleep
         while AnimationThreadStatus and (IsInAnimation or PtfxPrompt) do
-            sleep = 500
+            local sleep = 500
 
             if IsInAnimation then
                 sleep = 0
@@ -69,7 +74,7 @@ end
 -- Commands / Events --------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 
-Citizen.CreateThread(function()
+CreateThread(function()
     TriggerEvent('chat:addSuggestion', '/e', 'Play an emote',
         { { name = "emotename", help = "dance, camera, sit or any valid emote." } })
     TriggerEvent('chat:addSuggestion', '/emote', 'Play an emote',
@@ -82,8 +87,7 @@ Citizen.CreateThread(function()
     end
     TriggerEvent('chat:addSuggestion', '/emotemenu', 'Open dpemotes menu (F5) by default.')
     TriggerEvent('chat:addSuggestion', '/emotes', 'List available emotes.')
-    TriggerEvent('chat:addSuggestion', '/walk', 'Set your walkingstyle.',
-        { { name = "style", help = "/walks for a list of valid styles" } })
+    TriggerEvent('chat:addSuggestion', '/walk', 'Set your walkingstyle.', { { name = "style", help = "/walks for a list of valid styles" } })
     TriggerEvent('chat:addSuggestion', '/walks', 'List available walking styles.')
     TriggerEvent('chat:addSuggestion', '/emotecancel', 'Cancel currently playing emote.')
 end)
@@ -94,11 +98,11 @@ if Config.SqlKeybinding then
     RegisterCommand('emotebind', function(source, args, raw) EmoteBindStart(source, args, raw) end)
     RegisterCommand('emotebinds', function(source, args, raw) EmoteBindsStart(source, args, raw) end)
 end
-RegisterCommand('emotemenu', function(source, args, raw) OpenEmoteMenu() end)
-RegisterCommand('emotes', function(source, args, raw) EmotesOnCommand() end)
-RegisterCommand('walk', function(source, args, raw) WalkCommandStart(source, args, raw) end)
-RegisterCommand('walks', function(source, args, raw) WalksOnCommand() end)
-RegisterCommand('emotecancel', function(source, args, raw) EmoteCancel() end)
+RegisterCommand('emotemenu', function() OpenEmoteMenu() end)
+RegisterCommand('emotes', function() EmotesOnCommand() end)
+RegisterCommand('walk', function(source, args) WalkCommandStart(source, args) end)
+RegisterCommand('walks', function() WalksOnCommand() end)
+RegisterCommand('emotecancel', function() EmoteCancel() end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
@@ -134,9 +138,11 @@ function EmoteCancel()
         if LocalPlayer.state.ptfx then
             PtfxStop()
         end
-        ClearPedTasks(ply)
+        if IsEntityPlayingAnim(ply, ChosenDict, ChosenAnimation, 3) then
+            StopAnimTask(ply, ChosenDict, ChosenAnimation, 2.0)
+        end
         DetachEntity(ply, true, false)
-        CancelSharedEmote(ply)
+        CancelSharedEmote()
         DestroyAllProps()
         IsInAnimation = false
     end
@@ -144,9 +150,8 @@ function EmoteCancel()
 end
 
 function EmoteChatMessage(msg)
-    if msg then
-        TriggerEvent("chat:addMessage", { color = { 255, 255, 255 }, args = { "^5Help^0", tostring(msg) } })
-    end
+    if not msg then return end
+    TriggerEvent("chat:addMessage", { color = { 255, 255, 255 }, args = { "^5Help^0", tostring(msg) } })
 end
 
 function DebugPrint(args)
@@ -156,20 +161,12 @@ function DebugPrint(args)
 end
 
 --#region ptfx
-function PtfxThis(asset)
+local function PtfxThis(asset)
     while not HasNamedPtfxAssetLoaded(asset) do
         RequestNamedPtfxAsset(asset)
         Wait(10)
     end
     UseParticleFxAssetNextCall(asset)
-end
-
-function PtfxStart()
-    LocalPlayer.state:set('ptfx', true, true)
-end
-
-function PtfxStop()
-    LocalPlayer.state:set('ptfx', false, true)
 end
 
 AddStateBagChangeHandler('ptfx', nil, function(bagName, key, value, _unused, replicated)
@@ -220,7 +217,7 @@ AddStateBagChangeHandler('ptfx', nil, function(bagName, key, value, _unused, rep
 end)
 --#endregion ptfx
 
-function EmotesOnCommand(source, args, raw)
+function EmotesOnCommand()
     local EmotesCommand = ""
     for a in pairsByKeys(DP.Emotes) do
         EmotesCommand = EmotesCommand .. "" .. a .. ", "
@@ -252,31 +249,29 @@ function EmoteMenuStart(args, hard)
     local etype = hard
 
     if etype == "dances" then
-        if DP.Dances[name] ~= nil then
-            if OnEmotePlay(DP.Dances[name]) then end
+        if DP.Dances[name] then
+            OnEmotePlay(DP.Dances[name])
         end
     elseif etype == "animals" then
-        if DP.AnimalEmotes[name] ~= nil then
-            if OnEmotePlay(DP.AnimalEmotes[name]) then end
+        if DP.AnimalEmotes[name] then
+            OnEmotePlay(DP.AnimalEmotes[name])
         end
     elseif etype == "props" then
-        if DP.PropEmotes[name] ~= nil then
-            if OnEmotePlay(DP.PropEmotes[name]) then end
+        if DP.PropEmotes[name] then
+            OnEmotePlay(DP.PropEmotes[name])
         end
     elseif etype == "emotes" then
-        if DP.Emotes[name] ~= nil then
-            if OnEmotePlay(DP.Emotes[name]) then end
-        else
-            if name ~= "🕺 Dance Emotes" then end
+        if DP.Emotes[name] then
+            OnEmotePlay(DP.Emotes[name])
         end
     elseif etype == "expression" then
-        if DP.Expressions[name] ~= nil then
-            if OnEmotePlay(DP.Expressions[name]) then end
+        if DP.Expressions[name] then
+            OnEmotePlay(DP.Expressions[name])
         end
     end
 end
 
-function EmoteCommandStart(source, args, raw)
+function EmoteCommandStart(_, args)
     if #args > 0 then
         local name = string.lower(args[1])
         if name == "c" then
@@ -291,25 +286,21 @@ function EmoteCommandStart(source, args, raw)
             return
         end
 
-        if DP.Emotes[name] ~= nil then
-            if OnEmotePlay(DP.Emotes[name]) then end
-            return
-        elseif DP.Dances[name] ~= nil then
-            if OnEmotePlay(DP.Dances[name]) then end
-            return
-        elseif DP.AnimalEmotes[name] ~= nil then
-            if OnEmotePlay(DP.AnimalEmotes[name]) then end
-            return
-        elseif DP.PropEmotes[name] ~= nil then
-            if OnEmotePlay(DP.PropEmotes[name]) then end
-            return
+        if DP.Emotes[name] then
+            OnEmotePlay(DP.Emotes[name])
+        elseif DP.Dances[name] then
+            OnEmotePlay(DP.Dances[name])
+        elseif DP.AnimalEmotes[name] then
+            OnEmotePlay(DP.AnimalEmotes[name])
+        elseif DP.PropEmotes[name] then
+            OnEmotePlay(DP.PropEmotes[name])
         else
             EmoteChatMessage("'" .. name .. "' " .. Config.Languages[lang]['notvalidemote'] .. "")
         end
     end
 end
 
-function LoadAnim(dict)
+local function LoadAnim(dict)
     if not DoesAnimDictExist(dict) then
         return false
     end
@@ -322,9 +313,10 @@ function LoadAnim(dict)
     return true
 end
 
-function LoadPropDict(model)
-    while not HasModelLoaded(joaat(model)) do
-        RequestModel(joaat(model))
+local function LoadPropDict(model)
+    local newModel = joaat(model)
+    while not HasModelLoaded(newModel) do
+        RequestModel(newModel)
         Wait(10)
     end
 end
@@ -337,7 +329,7 @@ function DestroyAllProps()
     DebugPrint("Destroyed Props")
 end
 
-function AddPropToPlayer(prop1, bone, off1, off2, off3, rot1, rot2, rot3)
+local function AddPropToPlayer(prop1, bone, off1, off2, off3, rot1, rot2, rot3)
     local Player = PlayerPedId()
     local x, y, z = table.unpack(GetEntityCoords(Player))
 
@@ -528,7 +520,7 @@ function OnEmotePlay(EmoteName)
             AddPropToPlayer(PropName, PropBone, PropPl1, PropPl2, PropPl3, PropPl4, PropPl5, PropPl6)
             if SecondPropEmote then
                 AddPropToPlayer(SecondPropName, SecondPropBone, SecondPropPl1, SecondPropPl2, SecondPropPl3,
-                    SecondPropPl4, SecondPropPl5, SecondPropPl6)
+                SecondPropPl4, SecondPropPl5, SecondPropPl6)
             end
 
             -- Ptfx is on the prop, then we need to sync it

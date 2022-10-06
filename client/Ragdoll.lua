@@ -1,10 +1,6 @@
 if Config.RagdollEnabled then
-    RegisterCommand('+ragdoll', function(source, args, raw) Ragdoll() end)
-    RegisterCommand('-ragdoll', function(source, args, raw) StopRagdoll() end)
-    RegisterKeyMapping("+ragdoll", "Ragdoll your character", "keyboard", Config.RagdollKeybind)
-
     local stop = true
-    function Ragdoll()
+    local function Ragdoll()
         if Config.RagdollAsToggle then
             stop = not stop
         else
@@ -20,8 +16,13 @@ if Config.RagdollEnabled then
         end
     end
 
-    function StopRagdoll()
+    local function StopRagdoll()
         if Config.RagdollAsToggle then return end
         stop = true
     end
+
+
+    RegisterCommand('+ragdoll', function() Ragdoll() end)
+    RegisterCommand('-ragdoll', function() StopRagdoll() end)
+    RegisterKeyMapping("+ragdoll", "Ragdoll your character", "keyboard", Config.RagdollKeybind)
 end

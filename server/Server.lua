@@ -2,19 +2,16 @@
 -- Shared Emotes Syncing  ---------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 
-RegisterServerEvent("ServerEmoteRequest")
-AddEventHandler("ServerEmoteRequest", function(target, emotename, etype)
+RegisterNetEvent("ServerEmoteRequest", function(target, emotename, etype)
     TriggerClientEvent("ClientEmoteRequestReceive", target, emotename, etype)
 end)
 
-RegisterServerEvent("ServerValidEmote")
-AddEventHandler("ServerValidEmote", function(target, requestedemote, otheremote)
+RegisterNetEvent("ServerValidEmote", function(target, requestedemote, otheremote)
     TriggerClientEvent("SyncPlayEmote", source, otheremote, target)
     TriggerClientEvent("SyncPlayEmoteSource", target, requestedemote, source)
 end)
 
-RegisterServerEvent("ServerEmoteCancel")
-AddEventHandler("ServerEmoteCancel", function(target)
+RegisterNetEvent("ServerEmoteCancel", function(target)
     TriggerClientEvent("SyncCancelEmote", target, source)
 end)
 
@@ -60,8 +57,7 @@ end)
 -----------------------------------------------------------------------------------------------------
 
 local function addKeybindEventHandlers()
-    RegisterServerEvent("dp:ServerKeybindExist")
-    AddEventHandler('dp:ServerKeybindExist', function()
+    RegisterNetEvent('dp:ServerKeybindExist', function()
         local src = source
         local srcid = GetPlayerIdentifier(source)
         MySQL.query('SELECT * FROM dpkeybinds WHERE `id`=@id;', { id = srcid }, function(dpkeybinds)
@@ -76,8 +72,7 @@ local function addKeybindEventHandlers()
     --  This is my first time doing SQL stuff, and after i finished everything i realized i didnt have to store the keybinds in the database at all.
     --  But remaking it now is a little pointless since it does it job just fine!
 
-    RegisterServerEvent("dp:ServerKeybindCreate")
-    AddEventHandler("dp:ServerKeybindCreate", function()
+    RegisterNetEvent("dp:ServerKeybindCreate", function()
         local src = source
         local srcid = GetPlayerIdentifier(source)
         MySQL.insert('INSERT INTO dpkeybinds (`id`, `keybind1`, `emote1`, `keybind2`, `emote2`, `keybind3`, `emote3`, `keybind4`, `emote4`, `keybind5`, `emote5`, `keybind6`, `emote6`) VALUES (@id, @keybind1, @emote1, @keybind2, @emote2, @keybind3, @emote3, @keybind4, @emote4, @keybind5, @emote5, @keybind6, @emote6);'
@@ -90,14 +85,13 @@ local function addKeybindEventHandlers()
             end)
     end)
 
-    RegisterServerEvent("dp:ServerKeybindGrab")
-    AddEventHandler("dp:ServerKeybindGrab", function()
+    RegisterNetEvent("dp:ServerKeybindGrab", function()
         local src = source
         local srcid = GetPlayerIdentifier(source)
         MySQL.query('SELECT keybind1, emote1, keybind2, emote2, keybind3, emote3, keybind4, emote4, keybind5, emote5, keybind6, emote6 FROM `dpkeybinds` WHERE `id` = @id'
             ,
             { ['@id'] = srcid }, function(kb)
-            if kb[1].keybind1 ~= nil then
+            if kb[1].keybind1 then
                 TriggerClientEvent("dp:ClientKeybindGet", src, kb[1].keybind1, kb[1].emote1, kb[1].keybind2, kb[1].emote2
                     , kb[1].keybind3, kb[1].emote3, kb[1].keybind4, kb[1].emote4, kb[1].keybind5, kb[1].emote5,
                     kb[1].keybind6, kb[1].emote6)
@@ -108,8 +102,7 @@ local function addKeybindEventHandlers()
         end)
     end)
 
-    RegisterServerEvent("dp:ServerKeybindUpdate")
-    AddEventHandler("dp:ServerKeybindUpdate", function(key, emote)
+    RegisterNetEvent("dp:ServerKeybindUpdate", function(key, emote)
         local src = source
         local myid = GetPlayerIdentifier(source)
         if key == "num4" then chosenk = "keybind1"
